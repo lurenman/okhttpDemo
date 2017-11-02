@@ -19,13 +19,19 @@ import com.google.gson.Gson;
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.FormEncodingBuilder;
+import com.squareup.okhttp.Headers;
+import com.squareup.okhttp.MediaType;
+import com.squareup.okhttp.MultipartBuilder;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.FileNameMap;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -179,7 +185,7 @@ public class OkhttpDetailActivity extends BaseActivity {
                 break;
             case POSTASYUPLOAD:
                 tv_title.setText("异步基于post的文件上传");
-                postasyUpload();
+               // postasyUpload();
                 break;
             case DOWNLOADASYN:
                 tv_title.setText("异步下载文件");
@@ -205,7 +211,7 @@ public class OkhttpDetailActivity extends BaseActivity {
 
                             switch (v.getId()) {
                                 case R.id.btn_take_photo:
-                                    //先什么也不干
+                                    //上传
                                     selectWindow.dismiss();
                                     break;
 
@@ -219,6 +225,7 @@ public class OkhttpDetailActivity extends BaseActivity {
 //                                    intent.putExtras(bundle);
 //                                    CommonClass.ASMstartActivity(intent, UpLoadImageActivity
 //                                            .this, false);
+                                    postasyUpload();
                                     selectWindow.dismiss();
                                     break;
                             }
@@ -375,9 +382,59 @@ public class OkhttpDetailActivity extends BaseActivity {
     //同步基于post的文件上传
     private void postsynUpload(){
 
+
     }
     //异步基于post的文件上传
     private void postasyUpload() {
+        //这快申请权限，文件路径自己配置不展示
+        File file=new File("/storage/emulated/0/1508311037848.png");
+        //上传一张图片测试
+        String url = "http://admin.hkshijue.com/ModelWeb/AppModel/UploadImage";//上传图片的地址
+        OkHttpClient mOkHttpClient = new OkHttpClient();
+        MultipartBuilder builder = new MultipartBuilder()
+                .type(MultipartBuilder.FORM);
+        //添加参数
+        builder.addPart(Headers.of("Content-Disposition", "form-data; name=\"" + "fileStorageName"+ "\""),
+                RequestBody.create(null, "ModelCompanyStorage"));
+        builder.addPart(Headers.of("Content-Disposition", "form-data; name=\"" +"uploadName" + "\""),
+                RequestBody.create(null, "ModelCompanyUpload"));
+        builder.addPart(Headers.of("Content-Disposition", "form-data; name=\"" + "isCut" + "\""),
+                RequestBody.create(null,"0"));
+
+        RequestBody fileBody = null;
+        String fileName = file.getName();
+        fileBody = RequestBody.create(MediaType.parse(guessMimeType(fileName)), file);
+        //TODO 根据文件名设置contentType
+        builder.addPart(Headers.of("Content-Disposition",
+                "form-data; name=\"" + "文件名描述随便起" + "\"; filename=\"" + fileName + "\""),
+                fileBody);
+        RequestBody requestBody = builder.build();
+        Request request = new Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+        mOkHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Request request, IOException e) {
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Response response) throws IOException {
+                final String jsonString = response.body().string();
+                Log.e(TAG,"------------------------------------"+jsonString);
+                if (!TextUtils.isEmpty(jsonString))
+                {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            tv_jsondata.setText(jsonString);
+                        }
+                    });
+                }
+            }
+        });
+
 
     }
     //异步下载文件
@@ -410,5 +467,14 @@ public class OkhttpDetailActivity extends BaseActivity {
     //设置方法
     public void setOkMode(OkhttpMode mode) {
         this.okMode = mode;
+    }
+
+    private String guessMimeType(String path) {
+        FileNameMap fileNameMap = URLConnection.getFileNameMap();
+        String contentTypeFor = fileNameMap.getContentTypeFor(path);
+        if (contentTypeFor == null) {
+            contentTypeFor = "application/octet-stream";
+        }
+        return contentTypeFor;
     }
 }
